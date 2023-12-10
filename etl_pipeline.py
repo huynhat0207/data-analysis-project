@@ -8,10 +8,10 @@ from config import table_names, columns_name, parse_dates_columns
 pwd = os.environ['PGPASS']
 uid = os.environ['PGUID']
 
-server = '' 
-database = '' 
-username = '' 
-password = ''
+server = 'HUYTHN' 
+database = 'project' 
+username = 'huynhat0207' 
+password = '02072002'
 
 def connect_to_postgresql():
     try:
@@ -75,14 +75,6 @@ def main():
     dim_inventory['brand'] = dim_inventory["inventory_id"].str.split('_').str[2]
     dim_inventory = dim_inventory.dropna()
     
-    # dim_inventory = pd.concat([df["begin_inventory"], df["end_inventory"]]).drop_duplicates()
-    # dim_inventory = dim_inventory.drop_duplicates(subset=["inventory_id"])
-    # dim_inventory = dim_inventory.drop(["description","size","onHand","price","start_date"], axis=1)
-    # temp = df["final_sales"].drop_duplicates(subset=["inventory_id"]).copy()
-    # temp = temp.drop(["sales_date", "description", "size", "sales_quantity", "sales_dollar", "sales_price", "volume", "classification", "excise_tax", "vendor_no", "vendor_name"], axis=1)
-    # temp["city"] = temp["inventory_id"].str.split('_').str[1]
-    # dim_inventory = pd.concat([temp, dim_inventory]).drop_duplicates(subset=["inventory_id"])
-    
     
     # Create dimension product table
     
@@ -110,7 +102,7 @@ def main():
     
     # Create purchase fact table
     
-    purchases_fact_table = df["purchases_final"][["ponumber", "inventory_id", "vendor_no", "quantity", "dollar", "invoice_date"]].copy()
+    purchases_fact_table = df["purchases_final"][["ponumber", "inventory_id", "quantity", "dollar", "invoice_date"]].copy()
 
     # print(purchases_fact_table.info())
     
@@ -123,7 +115,7 @@ def main():
     print("Load to Dim_Vendor")
     for index, row in dim_vendor.iterrows():
         try:
-            print("""INSERT INTO Dim_Vendor (Vendor_no,Vendor_name) values({},'{}')""".format(row.vendor_no, str(row.vendor_name).replace("\'", "\'\'")))
+            # print("""INSERT INTO Dim_Vendor (Vendor_no,Vendor_name) values({},'{}')""".format(row.vendor_no, str(row.vendor_name).replace("\'", "\'\'")))
             cursor.execute("""INSERT INTO Dim_Vendor (Vendor_no,Vendor_name) values({},'{}')""".format(row.vendor_no, str(row.vendor_name).replace("\'", "\'\'")))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
@@ -132,7 +124,7 @@ def main():
     print("Load to Dim_Product")
     for index, row in dim_product.iterrows():
         try:
-            print("INSERT INTO Dim_Product (Brand, Description, Price, Size, Volume, Purchase_price, Vendor_no) values({},'{}',{},'{}',{},{},{})".format(int(row.brand), str(row.description).replace("\'", "\'\'"), float(row.price), str(row.size).replace("\'", "\'\'"), float(row.volume), float(row.purchase_price), row.vendor_no))
+            # print("INSERT INTO Dim_Product (Brand, Description, Price, Size, Volume, Purchase_price, Vendor_no) values({},'{}',{},'{}',{},{},{})".format(int(row.brand), str(row.description).replace("\'", "\'\'"), float(row.price), str(row.size).replace("\'", "\'\'"), float(row.volume), float(row.purchase_price), row.vendor_no))
             cursor.execute("INSERT INTO Dim_Product (Brand, Description, Price, Size, Volume, Purchase_price, Vendor_no) values({},'{}',{},'{}',{},{},{})".format(int(row.brand), str(row.description).replace("\'", "\'\'"), float(row.price), str(row.size).replace("\'", "\'\'"), float(row.volume), float(row.purchase_price), row.vendor_no))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
@@ -140,8 +132,8 @@ def main():
     for index, row in dim_inventory.iterrows():
         try:
             
-            print(row.brand," ",row.store, " ",row.city, "\n")
-            print("""INSERT INTO Dim_Inventory (Inventory_Id,Brand,Store,City) values('{}',{},{},'{}')""".format(str(row.inventory_id).replace("\'", "\'\'"), int(row.brand),  int(row.store), str(row.city).replace("\'", "\'\'")))
+            # print(row.brand," ",row.store, " ",row.city, "\n")
+            # print("""INSERT INTO Dim_Inventory (Inventory_Id,Brand,Store,City) values('{}',{},{},'{}')""".format(str(row.inventory_id).replace("\'", "\'\'"), int(row.brand),  int(row.store), str(row.city).replace("\'", "\'\'")))
             cursor.execute("""INSERT INTO Dim_Inventory (Inventory_Id,Brand,Store,City) values('{}',{},{},'{}')""".format(str(row.inventory_id).replace("\'", "\'\'"), int(row.brand),  int(row.store), str(row.city).replace("\'", "\'\'")))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
@@ -170,8 +162,8 @@ def main():
     print("Load to Purchases_Fact_Table")
     for index, row in purchases_fact_table.iterrows():
         try:
-            print("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Vendor_no, Purchase_quantity, Purchase_dollar, Invoice_Date) values({},'{}',{},{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.vendor_no, row.quantity, row.dollar, row.invoice_date.date()))
-            cursor.execute("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Vendor_no, Purchase_quantity, Purchase_dollar, Invoice_Date) values({},'{}',{},{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.vendor_no, row.quantity, row.dollar, row.invoice_date.date()))
+            # print("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Vendor_no, Purchase_quantity, Purchase_dollar, Invoice_Date) values({},'{}',{},{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.vendor_no, row.quantity, row.dollar, row.invoice_date.date()))
+            cursor.execute("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Purchase_quantity, Purchase_dollar, Invoice_Date) values({},'{}',{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.quantity, row.dollar, row.invoice_date.date()))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
             

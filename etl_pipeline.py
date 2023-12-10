@@ -51,22 +51,44 @@ def main():
     conn.close()
     
     # Tranform
-    # Create dimension inventory table
+    # Get value to January
+    df['final_sales'] = df['final_sales'][df['final_sales']['sales_date'] < '02/01/2016']
     
-    dim_inventory = pd.concat([df["begin_inventory"], df["end_inventory"]]).drop_duplicates()
-    dim_inventory = dim_inventory.drop_duplicates(subset=["inventory_id"])
-    dim_inventory = dim_inventory.drop(["description","size","onHand","price","start_date"], axis=1)
-    temp = df["final_sales"].drop_duplicates(subset=["inventory_id"]).copy()
-    temp = temp.drop(["sales_date", "description", "size", "sales_quantity", "sales_dollar", "sales_price", "volume", "classification", "excise_tax", "vendor_no", "vendor_name"], axis=1)
-    temp["city"] = temp["inventory_id"].str.split('_').str[1]
-    dim_inventory = pd.concat([temp, dim_inventory]).drop_duplicates(subset=["inventory_id"])
+    # Create dimension vendor table
+    dim_vendor = pd.concat([
+        df["invoice_purchases"][["vendor_no","vendor_name"]], 
+        df["final_sales"][["vendor_no","vendor_name"]], 
+        df["purchases_final"][["vendor_no","vendor_name"]],
+        df["purchase_price_description"][["vendor_no","vendor_name"]]
+        ]).drop_duplicates(subset=["vendor_no"])
+    # print(dim_vendor.info)
+    # Create dimension inventory table
+    dim_inventory = pd.concat([
+        df["begin_inventory"][["inventory_id"]], 
+        df["end_inventory"][["inventory_id"]], 
+        df["final_sales"][["inventory_id"]],
+        df["purchases_final"][["inventory_id"]]
+        ]).drop_duplicates(subset=["inventory_id"])
+    # dim_inventory[['store','city', 'brand']] = dim_inventory['inventory_id'].str.extract(r'(\d+)_(\w+)_(\d+)')
+    dim_inventory['store'] = dim_inventory["inventory_id"].str.split('_').str[0]
+    dim_inventory['city'] = dim_inventory["inventory_id"].str.split('_').str[1]
+    dim_inventory['brand'] = dim_inventory["inventory_id"].str.split('_').str[2]
+    dim_inventory = dim_inventory.dropna()
+    
+    # dim_inventory = pd.concat([df["begin_inventory"], df["end_inventory"]]).drop_duplicates()
+    # dim_inventory = dim_inventory.drop_duplicates(subset=["inventory_id"])
+    # dim_inventory = dim_inventory.drop(["description","size","onHand","price","start_date"], axis=1)
+    # temp = df["final_sales"].drop_duplicates(subset=["inventory_id"]).copy()
+    # temp = temp.drop(["sales_date", "description", "size", "sales_quantity", "sales_dollar", "sales_price", "volume", "classification", "excise_tax", "vendor_no", "vendor_name"], axis=1)
+    # temp["city"] = temp["inventory_id"].str.split('_').str[1]
+    # dim_inventory = pd.concat([temp, dim_inventory]).drop_duplicates(subset=["inventory_id"])
     
     
     # Create dimension product table
     
     dim_product = df["purchase_price_description"].drop_duplicates(subset=["brand"])
-    dim_product = dim_product.drop(["classification"], axis=1)
-    dim_product.dropna(axis=0)
+    dim_product = dim_product.drop(["classification","vendor_name"], axis=1)
+    dim_product= dim_product.dropna()
     # print(dim_product.info())
     
     # Create dimension sales_date
@@ -76,34 +98,53 @@ def main():
     dim_sales_date['month'] = dim_sales_date['sales_date'].dt.month
     dim_sales_date['day'] = dim_sales_date['sales_date'].dt.day
     dim_sales_date = dim_sales_date.drop(["inventory_id", "store", "brand", "description", "size", "sales_quantity", "sales_dollar", "sales_price", "volume", "classification", "excise_tax", "vendor_no", "vendor_name"], axis=1)
-    
     # print(dim_sales_date.info())
     
+    # Create dimension purchase orders
+    dim_purchase_orders = df["invoice_purchases"].drop(["vendor_no", "vendor_name", "invoice_date", "quantity", "dollars", "approval"], axis=1).drop_duplicates(subset=["ponumber"]).copy()
+    # print(dim_purchase_orders.info())
     # Create sales fact table
     
-    sales_fact_table = df["final_sales"].drop(["store", "description", "size", "volume", "classification","vendor_no", "vendor_name"], axis=1).copy()
+    sales_fact_table = df["final_sales"].drop(["brand","store", "description", "size", "volume", "classification","vendor_no", "vendor_name"], axis=1).copy()
     # print(sales_fact_table.info())
+    
+    # Create purchase fact table
+    
+    purchases_fact_table = df["purchases_final"][["ponumber", "inventory_id", "vendor_no", "quantity", "dollar", "invoice_date"]].copy()
+
+    # print(purchases_fact_table.info())
+    
     
     # Load to SQL Server 
     cnxn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+ password)
     cursor = cnxn.cursor()
     
-    print("Load to Dim_Inventory")
-    for index, row in dim_inventory.iterrows():
+    
+    print("Load to Dim_Vendor")
+    for index, row in dim_vendor.iterrows():
         try:
-            # print("""INSERT INTO Dim_Inventory (Inventory_Id,Brand,Store,City) values('{}',{},{},'{}')""".format(str(row.inventory_id).replace("\'", "\'\'"), int(row.brand),  int(row.store), str(row.city).replace("\'", "\'\'")))
-            cursor.execute("""INSERT INTO Dim_Inventory (Inventory_Id,Brand,Store,City) values('{}',{},{},'{}')""".format(str(row.inventory_id).replace("\'", "\'\'"), int(row.brand),  int(row.store), str(row.city).replace("\'", "\'\'")))
+            print("""INSERT INTO Dim_Vendor (Vendor_no,Vendor_name) values({},'{}')""".format(row.vendor_no, str(row.vendor_name).replace("\'", "\'\'")))
+            cursor.execute("""INSERT INTO Dim_Vendor (Vendor_no,Vendor_name) values({},'{}')""".format(row.vendor_no, str(row.vendor_name).replace("\'", "\'\'")))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
-            user_input = input("Type something and press Enter to continue: ")
+            
+
     print("Load to Dim_Product")
     for index, row in dim_product.iterrows():
         try:
-            # print("INSERT INTO Dim_Product (Brand, Description, Price, Size, Volume, Purchase_price, Vendor_num, Vendor_name) values({},'{}',{},'{}',{},{},{},'{}')".format(int(row.brand), str(row.description).replace("\'", "\'\'"), float(row.price), str(row.size).replace("\'", "\'\'"), float(row.volume), float(row.purchase_price), row.vendor_num, str(row.vendor_name).replace("\'", "\'\'")))
-            cursor.execute("INSERT INTO Dim_Product (Brand, Description, Price, Size, Volume, Purchase_price, Vendor_num, Vendor_name) values({},'{}',{},'{}',{},{},{},'{}')".format(int(row.brand), str(row.description).replace("\'", "\'\'"), float(row.price), str(row.size).replace("\'", "\'\'"), float(row.volume), float(row.purchase_price), row.vendor_num, str(row.vendor_name).replace("\'", "\'\'")))
+            print("INSERT INTO Dim_Product (Brand, Description, Price, Size, Volume, Purchase_price, Vendor_no) values({},'{}',{},'{}',{},{},{})".format(int(row.brand), str(row.description).replace("\'", "\'\'"), float(row.price), str(row.size).replace("\'", "\'\'"), float(row.volume), float(row.purchase_price), row.vendor_no))
+            cursor.execute("INSERT INTO Dim_Product (Brand, Description, Price, Size, Volume, Purchase_price, Vendor_no) values({},'{}',{},'{}',{},{},{})".format(int(row.brand), str(row.description).replace("\'", "\'\'"), float(row.price), str(row.size).replace("\'", "\'\'"), float(row.volume), float(row.purchase_price), row.vendor_no))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
-            user_input = input("Type something and press Enter to continue: ")
+    print("Load to Dim_Inventory")
+    for index, row in dim_inventory.iterrows():
+        try:
+            
+            print(row.brand," ",row.store, " ",row.city, "\n")
+            print("""INSERT INTO Dim_Inventory (Inventory_Id,Brand,Store,City) values('{}',{},{},'{}')""".format(str(row.inventory_id).replace("\'", "\'\'"), int(row.brand),  int(row.store), str(row.city).replace("\'", "\'\'")))
+            cursor.execute("""INSERT INTO Dim_Inventory (Inventory_Id,Brand,Store,City) values('{}',{},{},'{}')""".format(str(row.inventory_id).replace("\'", "\'\'"), int(row.brand),  int(row.store), str(row.city).replace("\'", "\'\'")))
+        except pyodbc.Error as ex:
+            print(f"Error: {ex}")
     print("Load to Dim_Sales_Date")
     for index, row in dim_sales_date.iterrows():
         try:
@@ -111,16 +152,32 @@ def main():
             cursor.execute("INSERT INTO Dim_Sales_Date (Sales_date, Year, Month, Day) values('{}',{},{},{})".format(row.sales_date.date(), int(row.year), int(row.month), int(row.day)))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
-            user_input = input("Type something and press Enter to continue: ")
     print("Load to Sales_Fact_Table")
     for index, row in sales_fact_table.iterrows():
         try:
             # print("INSERT INTO Sales_Fact_Table (Inventory_Id, Brand, Sales_date, Sales_dollar, Sales_price, Sales_quantity, Excise_tax) values('{}',{},'{}',{},{},{},{})".format(row.inventory_id.replace("\'", "\'\'"), row.brand, row.sales_date.date(), row.sales_dollar, row.sales_price, row.sales_quantity, row.excise_tax))
-            cursor.execute("INSERT INTO Sales_Fact_Table (Inventory_Id, Brand, Sales_date, Sales_dollar, Sales_price, Sales_quantity, Excise_tax) values('{}',{},'{}',{},{},{},{})".format(row.inventory_id.replace("\'", "\'\'"), row.brand, row.sales_date.date(), row.sales_dollar, row.sales_price, row.sales_quantity, row.excise_tax))
+            cursor.execute("INSERT INTO Sales_Fact_Table (Inventory_Id, Sales_date, Sales_dollar, Sales_price, Sales_quantity, Excise_tax) values('{}','{}',{},{},{},{})".format(row.inventory_id.replace("\'", "\'\'"), row.sales_date.date(), row.sales_dollar, row.sales_price, row.sales_quantity, row.excise_tax))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
-    
-    # finally:
-    #     cnxn.close()
+    print("Load to Dim_Purchase_Orders")
+    for index, row in dim_purchase_orders.iterrows():
+        try:
+            # print("INSERT INTO Dim_Purchase_Orders (Inventory_Id, Brand, Sales_date, Sales_dollar, Sales_price, Sales_quantity, Excise_tax) values('{}',{},'{}',{},{},{},{})".format(row.inventory_id.replace("\'", "\'\'"), row.brand, row.sales_date.date(), row.sales_dollar, row.sales_price, row.sales_quantity, row.excise_tax))
+            cursor.execute("INSERT INTO Dim_Purchase_Orders (PONumber, PODate, Pay_Date, Freight) values({},'{}','{}',{})".format(row.ponumber, row.podate.date(), row.pay_date.date(), row.feight))
+        except pyodbc.Error as ex:
+            print(f"Error: {ex}")
+    cnxn.commit()
+    print("Load to Purchases_Fact_Table")
+    for index, row in purchases_fact_table.iterrows():
+        try:
+            print("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Vendor_no, Purchase_quantity, Purchase_dollar, Invoice_Date) values({},'{}',{},{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.vendor_no, row.quantity, row.dollar, row.invoice_date.date()))
+            cursor.execute("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Vendor_no, Purchase_quantity, Purchase_dollar, Invoice_Date) values({},'{}',{},{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.vendor_no, row.quantity, row.dollar, row.invoice_date.date()))
+        except pyodbc.Error as ex:
+            print(f"Error: {ex}")
+            
+
+    cnxn.commit()
+
+    cursor.close()
     cnxn.close()
 main()

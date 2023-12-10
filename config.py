@@ -7,7 +7,7 @@ columns_name = {
     "begin_inventory": ["inventory_id", "store", "city", "brand", "description", "size", "onHand", "price", "start_date"],
     "end_inventory": ["inventory_id", "store", "city", "brand", "description", "size", "onHand", "price", "start_date"],
     "invoice_purchases": ["vendor_no", "vendor_name", "invoice_date", "ponumber","podate", "pay_date", "quantity", "dollars", "feight", "approval"],
-    "purchase_price_description": ["brand", "description", "price", "size", "volume", "classification", "purchase_price", "vendor_num", "vendor_name"],
+    "purchase_price_description": ["brand", "description", "price", "size", "volume", "classification", "purchase_price", "vendor_no", "vendor_name"],
     "purchases_final": ["inventory_id", "store", "brand", "description", "size", "vendor_no", "vendor_name", "ponumber", "podate","receiving_date", "invoice_date", "pay_date", "purchase_price", "quantity", "dollar", "classification"]    
 }
 parse_dates_columns = {

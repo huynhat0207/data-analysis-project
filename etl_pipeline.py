@@ -8,10 +8,10 @@ from config import table_names, columns_name, parse_dates_columns
 pwd = os.environ['PGPASS']
 uid = os.environ['PGUID']
 
-server = 'HUYTHN' 
-database = 'project' 
-username = 'huynhat0207' 
-password = '02072002'
+server = '' 
+database = '' 
+username = '' 
+password = ''
 
 def connect_to_postgresql():
     try:
@@ -93,7 +93,7 @@ def main():
     # print(dim_sales_date.info())
     
     # Create dimension purchase orders
-    dim_purchase_orders = df["invoice_purchases"].drop(["vendor_no", "vendor_name", "invoice_date", "quantity", "dollars", "approval"], axis=1).drop_duplicates(subset=["ponumber"]).copy()
+    dim_purchase_orders = df["invoice_purchases"].drop(["vendor_no", "vendor_name", "quantity", "dollars", "approval"], axis=1).drop_duplicates(subset=["ponumber"]).copy()
     # print(dim_purchase_orders.info())
     # Create sales fact table
     
@@ -102,7 +102,7 @@ def main():
     
     # Create purchase fact table
     
-    purchases_fact_table = df["purchases_final"][["ponumber", "inventory_id", "quantity", "dollar", "invoice_date"]].copy()
+    purchases_fact_table = df["purchases_final"][["ponumber", "inventory_id", "quantity", "dollar", "receiving_date"]].copy()
 
     # print(purchases_fact_table.info())
     
@@ -155,15 +155,15 @@ def main():
     for index, row in dim_purchase_orders.iterrows():
         try:
             # print("INSERT INTO Dim_Purchase_Orders (Inventory_Id, Brand, Sales_date, Sales_dollar, Sales_price, Sales_quantity, Excise_tax) values('{}',{},'{}',{},{},{},{})".format(row.inventory_id.replace("\'", "\'\'"), row.brand, row.sales_date.date(), row.sales_dollar, row.sales_price, row.sales_quantity, row.excise_tax))
-            cursor.execute("INSERT INTO Dim_Purchase_Orders (PONumber, PODate, Pay_Date, Freight) values({},'{}','{}',{})".format(row.ponumber, row.podate.date(), row.pay_date.date(), row.feight))
+            cursor.execute("INSERT INTO Dim_Purchase_Orders (PONumber, PODate, Pay_Date, Freight, Invoice_Date) values({},'{}','{}',{},'{}')".format(row.ponumber, row.podate.date(), row.pay_date.date(), row.feight, row.invoice_date.date()))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
     cnxn.commit()
     print("Load to Purchases_Fact_Table")
     for index, row in purchases_fact_table.iterrows():
         try:
-            # print("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Vendor_no, Purchase_quantity, Purchase_dollar, Invoice_Date) values({},'{}',{},{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.vendor_no, row.quantity, row.dollar, row.invoice_date.date()))
-            cursor.execute("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Purchase_quantity, Purchase_dollar, Invoice_Date) values({},'{}',{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.quantity, row.dollar, row.invoice_date.date()))
+            # print("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Vendor_no, Purchase_quantity, Purchase_dollar, Receiving_date) values({},'{}',{},{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.vendor_no, row.quantity, row.dollar, row.invoice_date.date()))
+            cursor.execute("INSERT INTO Purchases_Fact_Table (PONumber, Inventory_Id, Purchase_quantity, Purchase_dollar, Receiving_date) values({},'{}',{},{},'{}')".format(row.ponumber, row.inventory_id.replace("\'", "\'\'"), row.quantity, row.dollar, row.receiving_date.date()))
         except pyodbc.Error as ex:
             print(f"Error: {ex}")
             

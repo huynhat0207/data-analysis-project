@@ -16,8 +16,8 @@ CREATE TABLE Dim_Sales_Date ( Sales_date date, Year int, Month int, Day int, PRI
 
 CREATE TABLE Sales_Fact_Table ( Inventory_Id CHAR(50), Sales_date date, Sales_dollar float, Sales_price float, Sales_quantity int, Excise_tax float, FOREIGN KEY (Inventory_Id) REFERENCES Dim_Inventory(Inventory_Id), FOREIGN KEY (Sales_date) REFERENCES Dim_Sales_Date(Sales_date));
 
-CREATE TABLE Dim_Purchase_Orders ( PONumber int, PODate date, Pay_Date date, Freight float, PRIMARY KEY (PONumber));
+CREATE TABLE Dim_Purchase_Orders ( PONumber int, PODate date, Pay_Date date, Freight float, Invoice_Date date, PRIMARY KEY (PONumber));
 
-CREATE TABLE Purchases_Fact_Table ( PONumber int, Inventory_Id CHAR(50), Purchase_quantity int, Purchase_dollar int, Invoice_Date date, FOREIGN KEY (PONumber) REFERENCES Dim_Purchase_Orders(PONumber), FOREIGN KEY (Inventory_Id) REFERENCES Dim_Inventory(Inventory_Id));
+CREATE TABLE Purchases_Fact_Table ( PONumber int, Inventory_Id CHAR(50), Purchase_quantity int, Purchase_dollar int, Receiving_date date, FOREIGN KEY (PONumber) REFERENCES Dim_Purchase_Orders(PONumber), FOREIGN KEY (Inventory_Id) REFERENCES Dim_Inventory(Inventory_Id));
 
 

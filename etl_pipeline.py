@@ -8,10 +8,10 @@ from config import table_names, columns_name, parse_dates_columns
 pwd = os.environ['PGPASS']
 uid = os.environ['PGUID']
 
-server = '' 
-database = '' 
-username = '' 
-password = ''
+server = os.environ['SQLSERVER'] 
+database = os.environ['SQLDATABASE']  
+username = os.environ['SQLUID'] 
+password = os.environ['SQLPWD'] 
 
 def connect_to_postgresql():
     try:
